@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>포트폴리오 추적기 Pro</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="glass-header">
+        <h1>주식 수익률 추적 <span>Pro</span></h1>
+        <p>실시간 자산 현황 & 종합 포트폴리오 관리</p>
+        <div style="margin-top: 1rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">
+          <label for="user-id-input" style="color: var(--text-secondary); font-size: 0.9rem;">사용자 ID:</label>
+          <input type="text" id="user-id-input" value="default_user" style="padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border-light); background: rgba(0,0,0,0.2); color: white; outline: none; text-align: center; width: 150px;">
+        </div>
+      </header>
+
+      <main class="container">
+        <!-- Modal Overlay -->
+        <div id="add-stock-modal" class="modal-overlay hidden">
+          <section class="add-stock-section glass-card modal-content">
+            <div class="modal-header">
+              <h2>새로운 주식 등록</h2>
+              <button id="close-modal-btn" class="close-btn" aria-label="닫기">&times;</button>
+            </div>
+            <form id="add-stock-form" class="stock-form">
+              <div class="input-group">
+                <label for="symbol">종목 코드 (예: 005930.KS, AAPL)</label>
+                <input type="text" id="symbol" placeholder="종목 코드를 입력하세요" required />
+              </div>
+              <div class="input-group">
+                <label for="purchasePrice">구입 가격 (1주 기준)</label>
+                <input type="number" step="0.01" id="purchasePrice" placeholder="0.00" required />
+              </div>
+              <div class="input-group">
+                <label for="quantity">수량 (주)</label>
+                <input type="number" step="1" id="quantity" placeholder="1" required />
+              </div>
+              <button type="submit" class="btn-primary" style="margin-top: 2rem;">
+                <span class="btn-text">포트폴리오에 추가</span>
+                <span class="loader hidden"></span>
+              </button>
+            </form>
+          </section>
+        </div>
+
+        <!-- Edit Stock Modal -->
+        <div id="edit-stock-modal" class="modal-overlay hidden">
+          <section class="add-stock-section glass-card modal-content" style="border-top-color: var(--accent-secondary);">
+            <div class="modal-header">
+              <h2>포트폴리오 수정</h2>
+              <button id="close-edit-modal-btn" class="close-btn" aria-label="닫기">&times;</button>
+            </div>
+            <form id="edit-stock-form" class="stock-form">
+              <input type="hidden" id="edit-stock-id" />
+              <div class="input-group">
+                <label>종목 코드</label>
+                <input type="text" id="edit-symbol" readonly style="opacity: 0.7; cursor: not-allowed;" />
+              </div>
+              <div class="input-group">
+                <label for="edit-purchasePrice">평균 단가 (1주 기준)</label>
+                <input type="number" step="0.01" id="edit-purchasePrice" required />
+              </div>
+              <div class="input-group">
+                <label for="edit-quantity">수량 (주)</label>
+                <input type="number" step="1" id="edit-quantity" required />
+              </div>
+              <button type="submit" class="btn-primary" style="margin-top: 2rem; background: linear-gradient(135deg, var(--accent-secondary), #d946ef);">
+                <span class="btn-text">수정 내용 저장</span>
+                <span class="loader hidden"></span>
+              </button>
+            </form>
+          </section>
+        </div>
+
+        <!-- Portfolio Overview -->
+        <section class="portfolio-section">
+          
+          <!-- Total Summary -->
+          <div id="portfolio-summary" class="summary-card glass-card hidden">
+            <!-- Rendered by JS -->
+          </div>
+
+          <div class="section-header">
+            <h2>나의 포트폴리오</h2>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+              <button id="open-modal-btn" class="btn-primary" style="margin: 0; padding: 0.6rem 1.2rem; font-size: 0.9rem;">+ 주식 추가</button>
+              <button id="refresh-btn" class="btn-icon" aria-label="새로고침">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div id="portfolio-grid" class="portfolio-grid">
+            <!-- Loading State -->
+            <div class="grid-loading">포트폴리오를 불러오는 중입니다...</div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
