@@ -21,10 +21,12 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 
-# 빌드 결과물만 복사
+# 빌드 결과물(dist 폴더 전체)을 현재 작업 디렉토리(/app)로 복사
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 
 EXPOSE 3000
-CMD ["node", "dist/main"]
+
+# 경로를 명확하게 main.js까지 지정 (확장자 포함 권장)
+CMD ["node", "dist/main.js"]
