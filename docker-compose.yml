@@ -2,14 +2,25 @@ version: '3.8'
 services:
   db:
     image: postgres:15
+    restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: stock_tracker
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydb
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    restart: always
+    ports:
+      - "80:3000" # 외부 80번(웹)을 NestJS 3000번으로 연결
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://myuser:mypassword@db:5432/mydb
 
 volumes:
   pgdata:
