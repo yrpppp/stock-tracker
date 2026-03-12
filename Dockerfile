@@ -29,4 +29,4 @@ COPY --from=builder /app/package*.json ./
 EXPOSE 3000
 
 # 경로를 명확하게 main.js까지 지정 (확장자 포함 권장)
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
