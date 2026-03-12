@@ -3,6 +3,7 @@ services:
   db:
     image: postgres:15
     restart: always
+    env_file: .env
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -19,8 +20,9 @@ services:
       - "80:3000" # 외부 80번(웹)을 NestJS 3000번으로 연결
     depends_on:
       - db
+    env_file: .env
     environment:
-      DATABASE_URL: postgresql://myuser:mypassword@db:5432/mydb
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
 
 volumes:
   pgdata:

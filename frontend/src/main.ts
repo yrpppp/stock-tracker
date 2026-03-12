@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000/stocks';
+const API_URL = 'http://158.180.79.248/stocks';
 
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('add-stock-form') as HTMLFormElement;
