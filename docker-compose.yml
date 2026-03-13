@@ -23,6 +23,9 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      KIS_APP_KEY: ${KIS_APP_KEY}
+      KIS_APP_SECRET: ${KIS_APP_SECRET}
+      KIS_BASE_URL: ${KIS_BASE_URL}
 
 volumes:
   pgdata:

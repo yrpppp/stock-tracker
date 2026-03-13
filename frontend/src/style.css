@@ -363,3 +363,25 @@ body {
 .close-btn:hover {
   color: var(--text-primary);
 }
+
+@media (max-width: 768px) {
+  .summary-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    padding: 1rem;
+  }
+  .summary-val {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .summary-card {
+    grid-template-columns: 1fr;
+    gap: 1.2rem;
+  }
+  .summary-val {
+    font-size: 1.75rem;
+  }
+}
