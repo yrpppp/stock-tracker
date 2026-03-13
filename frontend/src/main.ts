@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let pollingInterval: any;
   function startPolling() {
     if (pollingInterval) clearInterval(pollingInterval);
-    pollingInterval = setInterval(fetchPortfolio, 60000);
+    pollingInterval = setInterval(fetchPortfolio, 10000); // 10초마다 갱신
   }
   
   // Add Stock Modal Elements
