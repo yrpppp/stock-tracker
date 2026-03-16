@@ -154,10 +154,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPriceMain = `₩${currentTotal.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}`;
     let currentPriceSub = '';
     let purchasePriceHtml = `₩${purchaseTotal.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}`;
+    let profitKrw = currentTotal - purchaseTotal;
 
     if (isUSD) {
        const krwCurrentTotal = currentTotal * exRate;
        const krwPurchaseTotal = purchaseTotal * exRate;
+       profitKrw = krwCurrentTotal - krwPurchaseTotal;
        
        currentPriceMain = `$${currentTotal.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
        currentPriceSub = `<div style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); margin-top: 0.2rem;">(₩${krwCurrentTotal.toLocaleString('ko-KR', { maximumFractionDigits: 0 })})</div>`;
@@ -189,6 +191,10 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="row">
           <span>총 매수금:</span>
           <span>${purchasePriceHtml}</span>
+        </div>
+        <div class="row" style="margin-top: 0.5rem; align-items: center;">
+          <span>평가 수익금:</span>
+          <span style="color: ${isPositive ? 'var(--success)' : 'var(--danger)'}; font-weight: 600;">${profitKrw > 0 ? '+' : ''}₩${profitKrw.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}</span>
         </div>
         <div class="row" style="margin-top: 0.5rem; align-items: center;">
           <span>수익률:</span>

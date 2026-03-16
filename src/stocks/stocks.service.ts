@@ -35,6 +35,8 @@ export class StocksService {
     this.kisAppSecret = this.configService.get<string>('KIS_APP_SECRET', '');
   }
 
+  private tokenPromise: Promise<string> | null = null;
+
   /**
    * KIS OAuth 토큰 발급 (24시간 유효)
    */
@@ -43,25 +45,35 @@ export class StocksService {
       return this.accessToken;
     }
 
+    if (this.tokenPromise) {
+      return this.tokenPromise;
+    }
+
     this.logger.log('KIS Access Token 발급 요청...');
 
-    try {
-      const response = await lastValueFrom(
-        this.httpService.post(`${this.kisBaseUrl}/oauth2/tokenP`, {
-          grant_type: 'client_credentials',
-          appkey: this.kisAppKey,
-          appsecret: this.kisAppSecret,
-        }),
-      );
+    this.tokenPromise = (async () => {
+      try {
+        const response = await lastValueFrom(
+          this.httpService.post(`${this.kisBaseUrl}/oauth2/tokenP`, {
+            grant_type: 'client_credentials',
+            appkey: this.kisAppKey,
+            appsecret: this.kisAppSecret,
+          }),
+        );
 
-      this.accessToken = response.data.access_token;
-      this.tokenExpiry = new Date(Date.now() + 23 * 60 * 60 * 1000);
-      this.logger.log('KIS Access Token 발급 성공');
-      return this.accessToken!;
-    } catch (error) {
-      this.logger.error('KIS Access Token 발급 실패', error.message);
-      throw new Error('KIS API 인증 실패. APP_KEY와 APP_SECRET을 확인하세요.');
-    }
+        this.accessToken = response.data.access_token;
+        this.tokenExpiry = new Date(Date.now() + 23 * 60 * 60 * 1000);
+        this.logger.log('KIS Access Token 발급 성공');
+        return this.accessToken!;
+      } catch (error) {
+        this.logger.error('KIS Access Token 발급 실패', error.message);
+        throw new Error('KIS API 인증 실패. APP_KEY와 APP_SECRET을 확인하세요.');
+      } finally {
+        this.tokenPromise = null;
+      }
+    })();
+
+    return this.tokenPromise;
   }
 
   private isKoreanStock(symbol: string): boolean {
