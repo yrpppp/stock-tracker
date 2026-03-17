@@ -62,8 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const userId = userIdInput.value.trim() || 'default_user';
     const params = new URLSearchParams({ userId });
     
-    // Don't show full loading text for background 1 min updates if grid has content
-    if(portfolioGrid.children.length === 0 || portfolioGrid.querySelector('.grid-loading')) {
+    // 카드가 없을 때만 로딩 표시
+    if (portfolioGrid.children.length === 0 || portfolioGrid.querySelector('.grid-loading')) {
       portfolioGrid.innerHTML = '<div class="grid-loading" style="grid-column: 1/-1; text-align: center; color: var(--text-secondary);">로딩 중...</div>';
     }
     
@@ -71,13 +71,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const response = await fetch(`${API_URL}?${params.toString()}`);
       const data = await response.json();
       
-      portfolioGrid.innerHTML = '';
-      
       if (!data || data.length === 0) {
         summaryCard.classList.add('hidden');
         portfolioGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary);">포트폴리오가 비어있습니다. 첫 주식을 등록해보세요!</div>';
         return;
       }
+
+      // 더 이상 없는 종목의 카드 제거
+      const receivedIds = new Set(data.map((s: any) => String(s.id)));
+      portfolioGrid.querySelectorAll('[data-stock-id]').forEach((card: Element) => {
+        if (!receivedIds.has(card.getAttribute('data-stock-id')!)) {
+          card.remove();
+        }
+      });
       
       let totalPurchase = 0;
       let totalCurrent = 0;
@@ -92,7 +98,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         totalPurchase += purchaseKrw;
         totalCurrent += currentKrw;
-        renderCard(stock, index, qty, isUSD, exRate);
+
+        const existingCard = portfolioGrid.querySelector(`[data-stock-id="${stock.id}"]`) as HTMLElement | null;
+        if (existingCard) {
+          // 카드는 그대로, 금액만 업데이트
+          updateCard(existingCard, stock, qty, isUSD, exRate);
+        } else {
+          renderCard(stock, index, qty, isUSD, exRate);
+        }
       });
       
       renderSummary(totalPurchase, totalCurrent);
@@ -100,7 +113,54 @@ document.addEventListener('DOMContentLoaded', () => {
       
     } catch (error) {
       console.error('Error fetching data:', error);
-      portfolioGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">데이터를 불러오는데 실패했습니다. 백엔드 서버가 실행 중인지 확인하세요.</div>';
+      // 에러 시 기존 카드 유지 (깜빡임 방지)
+      if (portfolioGrid.querySelector('.grid-loading')) {
+        portfolioGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">데이터를 불러오는데 실패했습니다. 백엔드 서버가 실행 중인지 확인하세요.</div>';
+      }
+    }
+  }
+
+  function updateCard(card: HTMLElement, stock: any, qty: number, isUSD: boolean, exRate: number) {
+    const id = stock.id;
+    const rateStr = stock.returnRate ? stock.returnRate.replace('%', '') : '0';
+    const rate = parseFloat(rateStr);
+    const isPositive = rate >= 0;
+    const rateSymbol = isPositive ? '+' : '';
+
+    const purchaseTotal = Number(stock.purchasePrice) * qty;
+    const currentTotal = Number(stock.currentPrice || stock.purchasePrice) * qty;
+    let profitKrw = currentTotal - purchaseTotal;
+
+    let currentPriceMain = `₩${currentTotal.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}`;
+    let currentPriceSub = '';
+
+    if (isUSD) {
+      const krwCurrentTotal = currentTotal * exRate;
+      const krwPurchaseTotal = purchaseTotal * exRate;
+      profitKrw = krwCurrentTotal - krwPurchaseTotal;
+      currentPriceMain = `$${currentTotal.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+      currentPriceSub = `(₩${krwCurrentTotal.toLocaleString('ko-KR', { maximumFractionDigits: 0 })})`;
+    }
+
+    const priceMainEl = card.querySelector(`#price-main-${id}`);
+    if (priceMainEl) priceMainEl.textContent = currentPriceMain;
+
+    const priceSubEl = card.querySelector(`#price-sub-${id}`) as HTMLElement | null;
+    if (priceSubEl) {
+      priceSubEl.textContent = currentPriceSub;
+      priceSubEl.style.display = currentPriceSub ? '' : 'none';
+    }
+
+    const profitEl = card.querySelector(`#profit-${id}`) as HTMLElement | null;
+    if (profitEl) {
+      profitEl.textContent = `${profitKrw > 0 ? '+' : ''}₩${profitKrw.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}`;
+      profitEl.style.color = isPositive ? 'var(--success)' : 'var(--danger)';
+    }
+
+    const rateEl = card.querySelector(`#rate-${id}`);
+    if (rateEl) {
+      rateEl.textContent = `${rateSymbol}${stock.returnRate || '0.00%'}`;
+      rateEl.className = `return-rate ${isPositive ? 'return-positive' : 'return-negative'}`;
     }
   }
 
@@ -138,7 +198,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const card = document.createElement('div');
     card.className = 'stock-card glass-card';
     card.style.animationDelay = `${index * 0.1}s`;
-    card.style.cursor = 'pointer'; // Make it look clickable
+    card.style.cursor = 'pointer';
+    card.setAttribute('data-stock-id', String(stock.id)); // 업데이트 식별용
     
     // Parse numeric rate safely
     const rateStr = stock.returnRate ? stock.returnRate.replace('%', '') : '0';
@@ -162,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
        profitKrw = krwCurrentTotal - krwPurchaseTotal;
        
        currentPriceMain = `$${currentTotal.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
-       currentPriceSub = `<div style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); margin-top: 0.2rem;">(₩${krwCurrentTotal.toLocaleString('ko-KR', { maximumFractionDigits: 0 })})</div>`;
+       currentPriceSub = `(₩${krwCurrentTotal.toLocaleString('ko-KR', { maximumFractionDigits: 0 })})`;
        
        purchasePriceHtml = `$${purchaseTotal.toLocaleString('en-US', { maximumFractionDigits: 2 })} <span style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary);">(₩${krwPurchaseTotal.toLocaleString('ko-KR', { maximumFractionDigits: 0 })})</span>`;
     }
@@ -181,10 +242,10 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
       <div class="stock-price" style="display: flex; flex-direction: column; gap: 0.2rem;">
         <div style="display: flex; align-items: baseline; gap: 0.5rem;">
-          ${currentPriceMain}
+          <span id="price-main-${stock.id}">${currentPriceMain}</span>
           <span style="font-size: 0.9rem; font-weight: 400; color: var(--text-secondary);">(${qty.toLocaleString('ko-KR')}주)</span>
         </div>
-        ${currentPriceSub}
+        <div id="price-sub-${stock.id}" style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); margin-top: 0.2rem;${currentPriceSub ? '' : ' display:none;'}">${currentPriceSub}</div>
       </div>
       
       <div class="stock-details">
@@ -194,11 +255,11 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="row" style="margin-top: 0.5rem; align-items: center;">
           <span>평가 수익금:</span>
-          <span style="color: ${isPositive ? 'var(--success)' : 'var(--danger)'}; font-weight: 600;">${profitKrw > 0 ? '+' : ''}₩${profitKrw.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}</span>
+          <span id="profit-${stock.id}" style="color: ${isPositive ? 'var(--success)' : 'var(--danger)'}; font-weight: 600;">${profitKrw > 0 ? '+' : ''}₩${profitKrw.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}</span>
         </div>
         <div class="row" style="margin-top: 0.5rem; align-items: center;">
           <span>수익률:</span>
-          <span class="return-rate ${rateClass}">${rateSymbol}${stock.returnRate || '0.00%'}</span>
+          <span id="rate-${stock.id}" class="return-rate ${rateClass}">${rateSymbol}${stock.returnRate || '0.00%'}</span>
         </div>
       </div>
     `;
