@@ -62,22 +62,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const userId = userIdInput.value.trim() || 'default_user';
     const params = new URLSearchParams({ userId });
     
-    // 카드가 없을 때만 로딩 표시
-    if (portfolioGrid.children.length === 0 || portfolioGrid.querySelector('.grid-loading')) {
-      portfolioGrid.innerHTML = '<div class="grid-loading" style="grid-column: 1/-1; text-align: center; color: var(--text-secondary);">로딩 중...</div>';
+    // 카드가 아예 없을 때만 로딩 표시 (깜빡임 최소화)
+    const hasCards = portfolioGrid.querySelectorAll('[data-stock-id]').length > 0;
+    if (!hasCards) {
+      portfolioGrid.innerHTML = '<div class="grid-loading" style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 2rem;">로딩 중...</div>';
     }
     
     try {
       const response = await fetch(`${API_URL}?${params.toString()}`);
       const data = await response.json();
       
+      // 로딩 메시지 제거
+      const loadingEl = portfolioGrid.querySelector('.grid-loading');
+      if (loadingEl) loadingEl.remove();
+      
       if (!data || data.length === 0) {
         summaryCard.classList.add('hidden');
-        portfolioGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary);">포트폴리오가 비어있습니다. 첫 주식을 등록해보세요!</div>';
+        portfolioGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 2rem;">포트폴리오가 비어있습니다. 첫 주식을 등록해보세요!</div>';
         return;
       }
 
-      // 더 이상 없는 종목의 카드 제거
+      // 더 이상 없는 종목의 카드 제거 (예: 다른 브라우저에서 삭제한 경우)
       const receivedIds = new Set(data.map((s: any) => String(s.id)));
       portfolioGrid.querySelectorAll('[data-stock-id]').forEach((card: Element) => {
         if (!receivedIds.has(card.getAttribute('data-stock-id')!)) {
@@ -101,7 +106,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const existingCard = portfolioGrid.querySelector(`[data-stock-id="${stock.id}"]`) as HTMLElement | null;
         if (existingCard) {
-          // 카드는 그대로, 금액만 업데이트
           updateCard(existingCard, stock, qty, isUSD, exRate);
         } else {
           renderCard(stock, index, qty, isUSD, exRate);
@@ -113,9 +117,9 @@ document.addEventListener('DOMContentLoaded', () => {
       
     } catch (error) {
       console.error('Error fetching data:', error);
-      // 에러 시 기존 카드 유지 (깜빡임 방지)
-      if (portfolioGrid.querySelector('.grid-loading')) {
-        portfolioGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">데이터를 불러오는데 실패했습니다. 백엔드 서버가 실행 중인지 확인하세요.</div>';
+      const loadingEl = portfolioGrid.querySelector('.grid-loading');
+      if (loadingEl) {
+        portfolioGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--danger); padding: 2rem;">데이터를 불러오는데 실패했습니다. 백엔드 서버가 실행 중인지 확인하세요.</div>';
       }
     }
   }
