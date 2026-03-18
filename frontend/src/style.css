@@ -9,6 +9,12 @@
   --success: #10b981;
   --danger: #ef4444;
   --font-family: 'Outfit', sans-serif;
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
 * {
@@ -173,18 +179,39 @@ body {
 }
 
 .stock-card {
-  animation: fadeInUp 0.5s ease-out forwards;
-  opacity: 0;
-  transform: translateY(20px);
+  opacity: 1;
+  transform: none;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stock-card.animate-in {
+  animation: fadeInLeft 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.value-animate-out {
+  animation: valueOut 0.25s ease-in forwards;
+}
+
+.value-animate-in {
+  animation: valueIn 0.25s ease-out forwards;
 }
 
 .stock-card:hover {
   transform: translateY(-5px);
+}
+
+@keyframes valueOut {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-15px); }
+}
+
+@keyframes valueIn {
+  from { opacity: 0; transform: translateX(15px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .stock-card-header {
@@ -202,6 +229,7 @@ body {
 .stock-price {
   font-size: 1.75rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .stock-details {
@@ -222,6 +250,7 @@ body {
   padding: 0.25rem 0.5rem;
   border-radius: 6px;
   display: inline-block;
+  font-variant-numeric: tabular-nums;
 }
 
 .return-positive {
@@ -234,9 +263,14 @@ body {
   background: rgba(239, 68, 68, 0.1);
 }
 
-@keyframes fadeInDown {
-  from { opacity: 0; transform: translateY(-30px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes fadeInLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeOutLeft {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-40px); }
 }
 
 @keyframes fadeInUp {
@@ -279,6 +313,10 @@ body {
   align-items: center;
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
   border: 1px solid rgba(139, 92, 246, 0.3);
+  /* Remove animation from here to prevent re-triggering on update */
+}
+
+.summary-card.animate-in {
   animation: fadeInDown 0.6s ease-out;
 }
 
@@ -300,6 +338,7 @@ body {
 .summary-val {
   font-size: 2rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .modal-overlay {

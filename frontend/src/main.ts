@@ -82,7 +82,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // 더 이상 없는 종목의 카드 제거 (예: 다른 브라우저에서 삭제한 경우)
+      // 비어있음 메시지 제거
+      if (portfolioGrid.children.length === 1 && !portfolioGrid.querySelector('[data-stock-id]')) {
+        portfolioGrid.innerHTML = '';
+      }
+
+      // 더 이상 없는 종목의 카드 제거
       const receivedIds = new Set(data.map((s: any) => String(s.id)));
       portfolioGrid.querySelectorAll('[data-stock-id]').forEach((card: Element) => {
         if (!receivedIds.has(card.getAttribute('data-stock-id')!)) {
@@ -107,24 +112,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const existingCard = portfolioGrid.querySelector(`[data-stock-id="${stock.id}"]`) as HTMLElement | null;
         if (existingCard) {
           updateCard(existingCard, stock, qty, isUSD, exRate);
+          // 순서 유지
+          if (portfolioGrid.children[index] !== existingCard) {
+            portfolioGrid.appendChild(existingCard);
+          }
         } else {
           renderCard(stock, index, qty, isUSD, exRate);
         }
       });
       
       renderSummary(totalPurchase, totalCurrent);
-      summaryCard.classList.remove('hidden');
+      if (summaryCard.classList.contains('hidden')) {
+        summaryCard.classList.remove('hidden');
+        summaryCard.classList.add('animate-in');
+        summaryCard.addEventListener('animationend', () => summaryCard.classList.remove('animate-in'), { once: true });
+      }
       
     } catch (error) {
       console.error('Error fetching data:', error);
-      const loadingEl = portfolioGrid.querySelector('.grid-loading');
-      if (loadingEl) {
-        portfolioGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--danger); padding: 2rem;">데이터를 불러오는데 실패했습니다. 백엔드 서버가 실행 중인지 확인하세요.</div>';
-      }
     }
   }
 
-  function updateCard(card: HTMLElement, stock: any, qty: number, isUSD: boolean, exRate: number) {
+  async function updateCard(card: HTMLElement, stock: any, qty: number, isUSD: boolean, exRate: number) {
     const id = stock.id;
     const rateStr = stock.returnRate ? stock.returnRate.replace('%', '') : '0';
     const rate = parseFloat(rateStr);
@@ -133,10 +142,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const purchaseTotal = Number(stock.purchasePrice) * qty;
     const currentTotal = Number(stock.currentPrice || stock.purchasePrice) * qty;
-    let profitKrw = currentTotal - purchaseTotal;
-
+    
     let currentPriceMain = `₩${currentTotal.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}`;
     let currentPriceSub = '';
+    let purchasePriceHtml = `₩${purchaseTotal.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}`;
+    let profitKrw = currentTotal - purchaseTotal;
 
     if (isUSD) {
       const krwCurrentTotal = currentTotal * exRate;
@@ -144,29 +154,52 @@ document.addEventListener('DOMContentLoaded', () => {
       profitKrw = krwCurrentTotal - krwPurchaseTotal;
       currentPriceMain = `$${currentTotal.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
       currentPriceSub = `(₩${krwCurrentTotal.toLocaleString('ko-KR', { maximumFractionDigits: 0 })})`;
+      purchasePriceHtml = `$${purchaseTotal.toLocaleString('en-US', { maximumFractionDigits: 2 })} <span style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary);">(₩${krwPurchaseTotal.toLocaleString('ko-KR', { maximumFractionDigits: 0 })})</span>`;
     }
 
-    const priceMainEl = card.querySelector(`#price-main-${id}`);
-    if (priceMainEl) priceMainEl.textContent = currentPriceMain;
+    const priceMainEl = card.querySelector(`#price-main-${id}`) as HTMLElement;
+    const priceSubEl = card.querySelector(`#price-sub-${id}`) as HTMLElement;
+    const purchaseEl = card.querySelector(`#purchase-${id}`) as HTMLElement;
+    const profitEl = card.querySelector(`#profit-${id}`) as HTMLElement;
+    const rateEl = card.querySelector(`#rate-${id}`) as HTMLElement;
 
-    const priceSubEl = card.querySelector(`#price-sub-${id}`) as HTMLElement | null;
+    const animateElements = [priceMainEl, priceSubEl, purchaseEl, profitEl, rateEl].filter(el => el);
+
+    // 1. 사라지는 애니메이션
+    animateElements.forEach(el => el.classList.add('value-animate-out'));
+
+    // 2. 애니메이션 중간 시점에 데이터 교체
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    if (priceMainEl) priceMainEl.textContent = currentPriceMain;
     if (priceSubEl) {
       priceSubEl.textContent = currentPriceSub;
       priceSubEl.style.display = currentPriceSub ? '' : 'none';
     }
-
-    const profitEl = card.querySelector(`#profit-${id}`) as HTMLElement | null;
+    if (purchaseEl) purchaseEl.innerHTML = purchasePriceHtml;
     if (profitEl) {
-      profitEl.textContent = `${profitKrw > 0 ? '+' : ''}₩${profitKrw.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}`;
-      profitEl.style.color = isPositive ? 'var(--success)' : 'var(--danger)';
+      const profitText = `${profitKrw > 0 ? '+' : ''}₩${profitKrw.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}`;
+      profitEl.textContent = profitText;
+      profitEl.style.color = profitKrw >= 0 ? 'var(--success)' : 'var(--danger)';
     }
-
-    const rateEl = card.querySelector(`#rate-${id}`);
     if (rateEl) {
       rateEl.textContent = `${rateSymbol}${stock.returnRate || '0.00%'}`;
       rateEl.className = `return-rate ${isPositive ? 'return-positive' : 'return-negative'}`;
     }
+
+    // 3. 나타나는 애니메이션
+    animateElements.forEach(el => {
+      el.classList.remove('value-animate-out');
+      el.classList.add('value-animate-in');
+    });
+
+    // 4. 클래스 정리
+    setTimeout(() => {
+      animateElements.forEach(el => el.classList.remove('value-animate-in'));
+    }, 300);
   }
+
+
 
   function renderSummary(totalPurchase: number, totalCurrent: number) {
     const totalReturnRate = totalPurchase > 0 
@@ -174,34 +207,32 @@ document.addEventListener('DOMContentLoaded', () => {
       : '0.00';
       
     const isPositive = Number(totalReturnRate) >= 0;
-    const rateClass = isPositive ? 'return-positive' : 'return-negative';
     const rateSymbol = isPositive ? '+' : '';
     const diff = totalCurrent - totalPurchase;
     
-    summaryCard.innerHTML = `
-      <div class="summary-item">
-        <span class="summary-label">총 매입 금액</span>
-        <span class="summary-val">₩${totalPurchase.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}</span>
-      </div>
-      <div class="summary-item">
-        <span class="summary-label">전체 평가 금액</span>
-        <span class="summary-val">₩${totalCurrent.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}</span>
-      </div>
-      <div class="summary-item">
-        <span class="summary-label">총 수익금</span>
-        <span class="summary-val" style="color: ${isPositive ? 'var(--success)' : 'var(--danger)'}">${diff > 0 ? '+' : ''}₩${diff.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}</span>
-      </div>
-      <div class="summary-item">
-        <span class="summary-label">총 수익률</span>
-        <span class="summary-val ${rateClass}" style="font-size: 1.5rem; padding: 0.2rem 1rem; border-radius: 8px;">${rateSymbol}${totalReturnRate}%</span>
-      </div>
-    `;
+    const purchaseEl = document.getElementById('summary-total-purchase');
+    const currentEl = document.getElementById('summary-total-current');
+    const profitEl = document.getElementById('summary-total-profit');
+    const rateEl = document.getElementById('summary-total-rate');
+
+    if (purchaseEl) purchaseEl.textContent = `₩${totalPurchase.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}`;
+    if (currentEl) currentEl.textContent = `₩${totalCurrent.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}`;
+    if (profitEl) {
+      profitEl.textContent = `${diff > 0 ? '+' : ''}₩${diff.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}`;
+      profitEl.style.color = isPositive ? 'var(--success)' : 'var(--danger)';
+    }
+    if (rateEl) {
+      rateEl.textContent = `${rateSymbol}${totalReturnRate}%`;
+      rateEl.className = `summary-val ${isPositive ? 'return-positive' : 'return-negative'}`;
+    }
   }
 
   function renderCard(stock: any, index: number, qty: number, isUSD: boolean, exRate: number) {
     const card = document.createElement('div');
-    card.className = 'stock-card glass-card';
-    card.style.animationDelay = `${index * 0.1}s`;
+    card.className = 'stock-card glass-card animate-in';
+    card.style.animationDelay = `${index * 0.05}s`;
+    card.addEventListener('animationend', () => card.classList.remove('animate-in'), { once: true });
+    
     card.style.cursor = 'pointer';
     card.setAttribute('data-stock-id', String(stock.id)); // 업데이트 식별용
     
@@ -255,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="stock-details">
         <div class="row">
           <span>총 매수금:</span>
-          <span>${purchasePriceHtml}</span>
+          <span id="purchase-${stock.id}">${purchasePriceHtml}</span>
         </div>
         <div class="row" style="margin-top: 0.5rem; align-items: center;">
           <span>평가 수익금:</span>
