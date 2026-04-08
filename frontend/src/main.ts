@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const purchaseEl = card.querySelector(`#purchase-${id}`) as HTMLElement;
     const profitEl = card.querySelector(`#profit-${id}`) as HTMLElement;
     const rateEl = card.querySelector(`#rate-${id}`) as HTMLElement;
-    const dailyChangeEl = card.querySelector(`#daily-change-${id}`) as HTMLElement;
+    let dailyChangeEl = card.querySelector(`#daily-change-${id}`) as HTMLElement;
 
     const animateElements = [priceMainEl, priceSubEl, purchaseEl, profitEl, rateEl, dailyChangeEl].filter(el => el);
 
@@ -194,11 +194,26 @@ document.addEventListener('DOMContentLoaded', () => {
       rateEl.textContent = `${rateSymbol}${stock.returnRate || '0.00%'}`;
       rateEl.className = `return-rate ${isPositive ? 'return-positive' : 'return-negative'}`;
     }
+    if (!dailyChangeEl) {
+      dailyChangeEl = document.createElement('div');
+      dailyChangeEl.id = `daily-change-${id}`;
+      dailyChangeEl.style.fontSize = '0.9rem';
+      dailyChangeEl.style.fontWeight = '600';
+      dailyChangeEl.style.marginTop = '0.2rem';
+      const stockPriceContainer = card.querySelector('.stock-price');
+      if (stockPriceContainer) {
+        stockPriceContainer.appendChild(dailyChangeEl);
+      }
+    }
+
     if (dailyChangeEl) {
       dailyChangeEl.textContent = dailyChangeText;
       dailyChangeEl.className = changeClass || 'return-neutral';
       if (!changeClass) dailyChangeEl.style.color = 'var(--text-secondary)';
       else dailyChangeEl.style.color = '';
+      
+      const animateElems = animateElements as HTMLElement[];
+      if (!animateElems.includes(dailyChangeEl)) animateElems.push(dailyChangeEl);
     }
 
     // 3. 나타나는 애니메이션
