@@ -77,8 +77,9 @@ export class StocksService {
   }
 
   private isKoreanStock(symbol: string): boolean {
+    if (/\.(KS|KQ)$/i.test(symbol)) return true; // .KS나 .KQ가 있으면 국내 주식으로 간주
     const cleaned = symbol.replace(/\.(KS|KQ)$/i, '').replace(/^A/i, '');
-    return /^\d{6}$/.test(cleaned);
+    return /^[A-Z0-9]{6}$/i.test(cleaned); // 6자리 영문/숫자 조합(ETF, 채권, 우선주 등) 허용
   }
 
   private normalizeSymbol(symbol: string): string {
