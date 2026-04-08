@@ -157,13 +157,21 @@ document.addEventListener('DOMContentLoaded', () => {
       purchasePriceHtml = `$${purchaseTotal.toLocaleString('en-US', { maximumFractionDigits: 2 })} <span style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary);">(₩${krwPurchaseTotal.toLocaleString('ko-KR', { maximumFractionDigits: 0 })})</span>`;
     }
 
+    const isChangePositive = stock.changeRate > 0;
+    const isChangeNegative = stock.changeRate < 0;
+    const changeClass = isChangePositive ? 'return-positive' : (isChangeNegative ? 'return-negative' : '');
+    const changeSymbol = isChangePositive ? '▲' : (isChangeNegative ? '▼' : '-');
+    const changeSign = isChangePositive ? '+' : '';
+    const dailyChangeText = `${isUSD ? '$' : '₩'}${Number(stock.currentPrice).toLocaleString(isUSD ? 'en-US' : 'ko-KR', { maximumFractionDigits: isUSD ? 2 : 0 })}  ${changeSymbol} ${isUSD ? '$' : ''}${Math.abs(stock.changeAmount || 0).toLocaleString(isUSD ? 'en-US' : 'ko-KR', { maximumFractionDigits: isUSD ? 2 : 0 })} (${changeSign}${stock.changeRate || 0}%)`;
+
     const priceMainEl = card.querySelector(`#price-main-${id}`) as HTMLElement;
     const priceSubEl = card.querySelector(`#price-sub-${id}`) as HTMLElement;
     const purchaseEl = card.querySelector(`#purchase-${id}`) as HTMLElement;
     const profitEl = card.querySelector(`#profit-${id}`) as HTMLElement;
     const rateEl = card.querySelector(`#rate-${id}`) as HTMLElement;
+    const dailyChangeEl = card.querySelector(`#daily-change-${id}`) as HTMLElement;
 
-    const animateElements = [priceMainEl, priceSubEl, purchaseEl, profitEl, rateEl].filter(el => el);
+    const animateElements = [priceMainEl, priceSubEl, purchaseEl, profitEl, rateEl, dailyChangeEl].filter(el => el);
 
     // 1. 사라지는 애니메이션
     animateElements.forEach(el => el.classList.add('value-animate-out'));
@@ -185,6 +193,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (rateEl) {
       rateEl.textContent = `${rateSymbol}${stock.returnRate || '0.00%'}`;
       rateEl.className = `return-rate ${isPositive ? 'return-positive' : 'return-negative'}`;
+    }
+    if (dailyChangeEl) {
+      dailyChangeEl.textContent = dailyChangeText;
+      dailyChangeEl.className = changeClass || 'return-neutral';
+      if (!changeClass) dailyChangeEl.style.color = 'var(--text-secondary)';
+      else dailyChangeEl.style.color = '';
     }
 
     // 3. 나타나는 애니메이션
@@ -262,6 +276,13 @@ document.addEventListener('DOMContentLoaded', () => {
        
        purchasePriceHtml = `$${purchaseTotal.toLocaleString('en-US', { maximumFractionDigits: 2 })} <span style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary);">(₩${krwPurchaseTotal.toLocaleString('ko-KR', { maximumFractionDigits: 0 })})</span>`;
     }
+
+    const isChangePositive = stock.changeRate > 0;
+    const isChangeNegative = stock.changeRate < 0;
+    const changeClass = isChangePositive ? 'return-positive' : (isChangeNegative ? 'return-negative' : '');
+    const changeSymbol = isChangePositive ? '▲' : (isChangeNegative ? '▼' : '-');
+    const changeSign = isChangePositive ? '+' : '';
+    const dailyChangeText = `${isUSD ? '$' : '₩'}${Number(stock.currentPrice).toLocaleString(isUSD ? 'en-US' : 'ko-KR', { maximumFractionDigits: isUSD ? 2 : 0 })}  ${changeSymbol} ${isUSD ? '$' : ''}${Math.abs(stock.changeAmount || 0).toLocaleString(isUSD ? 'en-US' : 'ko-KR', { maximumFractionDigits: isUSD ? 2 : 0 })} (${changeSign}${stock.changeRate || 0}%)`;
     
     card.innerHTML = `
       <div class="stock-card-header" style="align-items: flex-start;">
@@ -281,6 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span style="font-size: 0.9rem; font-weight: 400; color: var(--text-secondary);">(${qty.toLocaleString('ko-KR')}주)</span>
         </div>
         <div id="price-sub-${stock.id}" style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); margin-top: 0.2rem;${currentPriceSub ? '' : ' display:none;'}">${currentPriceSub}</div>
+        <div id="daily-change-${stock.id}" class="${changeClass}" style="font-size: 0.9rem; font-weight: 600; margin-top: 0.2rem;${!changeClass ? ' color: var(--text-secondary);' : ''}">${dailyChangeText}</div>
       </div>
       
       <div class="stock-details">

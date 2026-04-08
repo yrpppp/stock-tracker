@@ -77,12 +77,12 @@ export class StocksService {
   }
 
   private isKoreanStock(symbol: string): boolean {
-    const cleaned = symbol.replace(/\.(KS|KQ)$/i, '');
+    const cleaned = symbol.replace(/\.(KS|KQ)$/i, '').replace(/^A/i, '');
     return /^\d{6}$/.test(cleaned);
   }
 
   private normalizeSymbol(symbol: string): string {
-    return symbol.replace(/\.(KS|KQ)$/i, '');
+    return symbol.replace(/\.(KS|KQ)$/i, '').replace(/^A/i, '');
   }
 
   /**
@@ -128,7 +128,7 @@ export class StocksService {
   private async fetchKoreanStockPrice(
     symbol: string,
     token: string,
-  ): Promise<{ currentPrice: number; stockName: string; currency: string }> {
+  ): Promise<{ currentPrice: number; changeAmount: number; changeRate: number; stockName: string; currency: string }> {
     const url = `${this.kisBaseUrl}/uapi/domestic-stock/v1/quotations/inquire-price`;
 
     const response = await lastValueFrom(
@@ -164,50 +164,65 @@ export class StocksService {
 
     return {
       currentPrice: parseFloat(output.stck_prpr) || 0,
+      changeAmount: parseFloat(output.prdy_vrss) || 0,
+      changeRate: parseFloat(output.prdy_ctrt) || 0,
       stockName,
       currency: 'KRW',
     };
   }
 
-  /**
-   * 해외 주식 현재가 조회 (KIS API)
-   */
   private async fetchOverseasStockPrice(
     symbol: string,
     token: string,
-  ): Promise<{ currentPrice: number; stockName: string; currency: string }> {
+  ): Promise<{ currentPrice: number; changeAmount: number; changeRate: number; stockName: string; currency: string }> {
     const url = `${this.kisBaseUrl}/uapi/overseas-price/v1/quotations/price`;
 
-    const response = await lastValueFrom(
-      this.httpService.get(url, {
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          Authorization: `Bearer ${token}`,
-          appkey: this.kisAppKey,
-          appsecret: this.kisAppSecret,
-          tr_id: 'HHDFS00000300',
-          custtype: 'P',
-        },
-        params: {
-          AUTH: '',
-          EXCD: 'NAS', // 기본 나스닥
-          SYMB: symbol,
-        },
-      }),
-    );
+    const excds = ['NAS', 'NYS', 'AMS'];
+    let lastOutput: any = null;
 
-    const output = response.data.output;
-    if (!output) {
-      throw new Error(`해외 주식 시세 조회 실패: ${symbol}`);
+    for (const excd of excds) {
+      try {
+        const response = await lastValueFrom(
+          this.httpService.get(url, {
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+              Authorization: `Bearer ${token}`,
+              appkey: this.kisAppKey,
+              appsecret: this.kisAppSecret,
+              tr_id: 'HHDFS00000300',
+              custtype: 'P',
+            },
+            params: {
+              AUTH: '',
+              EXCD: excd,
+              SYMB: symbol,
+            },
+          }),
+        );
+
+        if (response.data.output && response.data.output.last) {
+          lastOutput = response.data.output;
+          break; // Found correct exchange and valid price
+        }
+      } catch (error) {
+        // Continue to the next exchange if this one fails
+        continue;
+      }
     }
 
-    const stockName = output.name || symbol;
+    if (!lastOutput) {
+      throw new Error(`해외 주식/ETF 시세 조회 실패 (모든 거래소 확인): ${symbol}`);
+    }
+
+    const stockName = lastOutput.name || symbol;
     if (!this.stockNameCache.has(symbol)) {
       this.stockNameCache.set(symbol, stockName);
     }
 
     return {
-      currentPrice: parseFloat(output.last) || 0,
+      currentPrice: parseFloat(lastOutput.last) || 0,
+      changeAmount: parseFloat(lastOutput.diff) || 0,
+      changeRate: parseFloat(lastOutput.rate) || 0,
       stockName,
       currency: 'USD',
     };
@@ -232,6 +247,8 @@ export class StocksService {
       return stocks.map((stock) => ({
         ...stock,
         currentPrice: 0,
+        changeAmount: 0,
+        changeRate: 0,
         stockName: stock.symbol,
         currency: 'KRW',
         exchangeRate: 1400,
@@ -254,6 +271,8 @@ export class StocksService {
     const stocksWithCurrentPrice = await Promise.all(
       stocks.map(async (stock) => {
         let currentPrice = 0;
+        let changeAmount = 0;
+        let changeRate = 0;
         let stockName = this.stockNameCache.get(this.normalizeSymbol(stock.symbol)) || stock.symbol;
         let currency = 'KRW';
 
@@ -264,11 +283,15 @@ export class StocksService {
           if (isKorean) {
             const result = await this.fetchKoreanStockPrice(normalizedSymbol, token);
             currentPrice = result.currentPrice;
+            changeAmount = result.changeAmount;
+            changeRate = result.changeRate;
             stockName = result.stockName;
             currency = result.currency;
           } else {
             const result = await this.fetchOverseasStockPrice(normalizedSymbol, token);
             currentPrice = result.currentPrice;
+            changeAmount = result.changeAmount;
+            changeRate = result.changeRate;
             stockName = result.stockName;
             currency = result.currency;
           }
@@ -283,6 +306,8 @@ export class StocksService {
         return {
           ...stock,
           currentPrice,
+          changeAmount,
+          changeRate,
           stockName: stockName || stock.symbol,
           currency,
           exchangeRate,
