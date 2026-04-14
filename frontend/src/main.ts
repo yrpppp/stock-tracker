@@ -8,6 +8,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const summaryCard = document.getElementById('portfolio-summary') as HTMLDivElement;
   const userIdInput = document.getElementById('user-id-input') as HTMLInputElement;
 
+  // URL 경로 또는 해시에서 사용자 ID 추출
+  // 예: http://example.com/myuser  또는  http://example.com/#myuser
+  const pathUserId = window.location.pathname.split('/').filter(Boolean).pop();
+  const hashUserId = window.location.hash ? window.location.hash.substring(1) : '';
+  const urlUserId = pathUserId || hashUserId;
+  if (urlUserId) {
+    userIdInput.value = decodeURIComponent(urlUserId);
+  }
+
   let pollingInterval: any;
   function startPolling() {
     if (pollingInterval) clearInterval(pollingInterval);
