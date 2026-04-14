@@ -8,14 +8,45 @@ document.addEventListener('DOMContentLoaded', () => {
   const summaryCard = document.getElementById('portfolio-summary') as HTMLDivElement;
   const userIdInput = document.getElementById('user-id-input') as HTMLInputElement;
 
-  // URL 경로 또는 해시에서 사용자 ID 추출
-  // 예: http://example.com/myuser  또는  http://example.com/#myuser
-  const pathUserId = window.location.pathname.split('/').filter(Boolean).pop();
-  const hashUserId = window.location.hash ? window.location.hash.substring(1) : '';
-  const urlUserId = pathUserId || hashUserId;
-  if (urlUserId) {
-    userIdInput.value = decodeURIComponent(urlUserId);
+  // URL에서 사용자 ID 추출하는 함수
+  // 우선순위: ?user=값 > #값 > pathname 마지막 세그먼트
+  function getUserIdFromUrl(): string | null {
+    // 1. 쿼리 파라미터 (?user=값)
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryUser = urlParams.get('user');
+    if (queryUser) return queryUser;
+
+    // 2. 해시 (#값)
+    if (window.location.hash && window.location.hash.length > 1) {
+      return decodeURIComponent(window.location.hash.substring(1));
+    }
+
+    // 3. pathname 마지막 세그먼트 (/값)
+    const pathSegments = window.location.pathname.split('/').filter(Boolean);
+    if (pathSegments.length > 0) {
+      return decodeURIComponent(pathSegments[pathSegments.length - 1]);
+    }
+
+    return null;
   }
+
+  // URL에서 사용자 ID 적용
+  function applyUserIdFromUrl() {
+    const urlUserId = getUserIdFromUrl();
+    if (urlUserId) {
+      userIdInput.value = urlUserId;
+      userIdInput.setAttribute('value', urlUserId);
+    }
+  }
+
+  applyUserIdFromUrl();
+
+  // hash 변경 시에도 사용자 ID 업데이트
+  window.addEventListener('hashchange', () => {
+    applyUserIdFromUrl();
+    portfolioGrid.innerHTML = '';
+    fetchPortfolio();
+  });
 
   let pollingInterval: any;
   function startPolling() {
